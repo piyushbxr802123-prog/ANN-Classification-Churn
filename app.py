@@ -5,17 +5,37 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler,OneHotEncoder
 import pickle
 
-with open('model.pkl', 'rb') as f:
-    model = pickle.load(f)
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
 
-with open('label_encoder_gender.pkl','rb') as file:
-    label_encoder_gender=pickle.load(file)
+# ---------- Load model weights (NO tensorflow needed) ----------
+data = np.load("model_weights.npz")
+W = [data[k] for k in data.files]   # W[0],W[1] = layer1 w,b | W[2],W[3] = layer2 | W[4],W[5] = output
 
-with open('onehot_encoder_geo.pkl','rb') as file:
-    label_encoder_geo=pickle.load(file)
+def relu(x):
+    return np.maximum(0, x)
 
-with open('scaler.pkl','rb') as file:
-    scaler=pickle.load(file)
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def predict(X):
+    """Manual forward pass of the ANN"""
+    a = relu(X @ W[0] + W[1])       # hidden layer 1
+    a = relu(a @ W[2] + W[3])       # hidden layer 2
+    a = sigmoid(a @ W[4] + W[5])    # output layer
+    return a
+# ----------------------------------------------------------------
+
+with open('label_encoder_gender.pkl', 'rb') as file:
+    label_encoder_gender = pickle.load(file)
+
+with open('onehot_encoder_geo.pkl', 'rb') as file:
+    label_encoder_geo = pickle.load(file)
+
+with open('scaler.pkl', 'rb') as file:
+    scaler = pickle.load(file)
 
 st.title('Customer Churn Prediction')
 
@@ -49,9 +69,8 @@ input_data= pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=
 
 input_scaled=scaler.transform(input_data)
 
-prediction=model.predict(input_scaled)
-prediction_proba=prediction[0][0]
-
+prediction = predict(input_scaled)
+prediction_proba = float(prediction[0][0])
 st.write(f'Churn Probability: {prediction_proba:.2f}')
 
 if prediction_proba > 0.5:
